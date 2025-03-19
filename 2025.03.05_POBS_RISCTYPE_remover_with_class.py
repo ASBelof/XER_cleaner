@@ -27,6 +27,7 @@ from pandas.io.excel import ExcelWriter
 #
 
 class XerFile:
+    selected_table_list = []
     def __init__(self, file_path, data, table_list):
         self.file_path = file_path
         self.data = data
@@ -39,37 +40,38 @@ class XerFile:
     def clean_xer(self):
         
         if self.file_path != "":
-            if 'RISKTYPE' in self.table_list or 'POBS' in self.table_list:
-                xer_file = self.file_path
-                xer_file_name = os.path.splitext(os.path.basename(xer_file))[0]
-                print('xer_file_name -', xer_file_name)
-                
-                path_to_xer = os.path.dirname(xer_file)
-                print (path_to_xer)
+            # if 'RISKTYPE' in self.table_list or 'POBS' in self.table_list:
+            xer_file = self.file_path
+            xer_file_name = os.path.splitext(os.path.basename(xer_file))[0]
+            print('xer_file_name -', xer_file_name)
             
-                path_to_new_xer = os.path.join(path_to_xer, xer_file_name + '_NEW.xer')
-                print(path_to_new_xer)
-            
-                # with open(xer_file, 'r', encoding='cp1251', errors = 'ignore') as f:
-                #     lines = f.readlines()
-                with open(path_to_new_xer, 'w', encoding='cp1251', errors = 'ignore') as f:
-                    for line in self.data:
-                        if line.startswith('%T'):
-                            table_name = line.strip().split('\t')[1]
-                            if table_name == 'RISKTYPE' or table_name == 'POBS':
-                                del_line = 'del'
-                            else:
-                                f.write(line)
-                                del_line = None
-                        elif line.startswith('%F') or line.startswith('%R'):
-                            if del_line != 'del':
-                                f.write(line)
-                        else:
+            path_to_xer = os.path.dirname(xer_file)
+            print (path_to_xer)
+        
+            path_to_new_xer = os.path.join(path_to_xer, xer_file_name + '_NEW.xer')
+            print(path_to_new_xer)
+        
+            with open(path_to_new_xer, 'w', encoding='cp1251', errors = 'ignore') as f:
+                for line in self.data:
+                    if line.startswith('%T'):
+                        table_name = line.strip().split('\t')[1]
+                        if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
                             f.write(line)
+                        # table_name == 'RISKTYPE' or table_name == 'POBS':
+                        #     del_line = 'del'
+                        else:
+                            continue
+                            # f.write(line)
+                            # del_line = None
+                    elif line.startswith('%F') or line.startswith('%R'):
+                        if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
+                            f.write(line)
+                    else:
+                        f.write(line)
                 
                 tk.messagebox.showinfo("Результат",('Готово!!!\nВ той же папке создан xer-файл с индексом "NEW"'))
-            else:
-                tk.messagebox.showinfo("Внимание!!!",('В выбранном XER-файле нет таблиц "POBS" или "RISKTYPE".\rНовый файл не создан!'))
+            # else:
+            #     tk.messagebox.showinfo("Внимание!!!",('В выбранном XER-файле нет таблиц "POBS" или "RISKTYPE".\rНовый файл не создан!'))
         else:
             tk.messagebox.showinfo("Ошибка!!!",('XER-файл не выбран!!!'))
             
@@ -127,7 +129,7 @@ class XerFile:
                             fill_excel_with_data(list_of_series, fields, table_name)
                         table_name = line.strip().split('\t')[1]
                         print ('\nТаблица - ', table_name)
-                        if table_name not in self.table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
+                        if table_name not in self.selected_table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
                             fields = None
                             rows = []
                             df = pd.DataFrame (None)
@@ -142,12 +144,12 @@ class XerFile:
                             list_of_series = []
                             print ('в выгрузку попадает')
                     elif line.startswith('%F'):
-                        if table_name in self.table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
+                        if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
                             fields = line.strip().split('\t')
                     elif line.startswith('%R'):
-                        if table_name not in self.table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
+                        if table_name not in self.selected_table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
                             continue
-                        if table_name in self.table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
+                        if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
                             rows = line.strip().split('\t')[:len(fields)+1]
                             if len(rows)<len(fields):
                                 len_dif = len(fields)-len(rows)
@@ -189,6 +191,7 @@ def select_file():
     # создание объекта
     global xer_file
     xer_file = open_file(filepath)
+    xer_file.selected_table_list = xer_file.table_list
 
 # функция отвечающая за открытие xer
 # вызывается нажатием кнопки 'Выбрать файл' (btn2)
@@ -196,7 +199,7 @@ def select_file():
 # возвращает экземпляр класса XerFile
 
 def open_file(filepath):
-    global table_list
+    # global table_list
     table_list = []
     if filepath != "":
         print(filepath)
@@ -264,10 +267,14 @@ def xer_2_excel():
 # вывод окна выбора таблиц
 ################################################################################
 
-check_btn_vars = []
-check_btn_list = []
+
 
 def insert_check_btn(text_area, list_of_tables):
+    global check_btn_vars
+    global check_btn_list
+    
+    check_btn_vars = []
+    check_btn_list = []
     # global list_of_tables
     print(f'tbl list is {list_of_tables}')
     list_of_tables = sorted(list_of_tables)
@@ -301,12 +308,12 @@ def selection_get():
     for s in check_btn_vars:
         if s.get() == 1:
             selected_indexes.append(check_btn_vars.index(s))
-            selected_tables.append(table_list[check_btn_vars.index(s)])
+            selected_tables.append(xer_file.table_list[check_btn_vars.index(s)])
             # print(list_of_tables_in_xer[check_btn_vars.index(s)])
         
     print(f'\n{selected_indexes}')
     print(selected_tables)
-    xer_file.table_list = selected_tables
+    xer_file.selected_table_list = selected_tables
     global select_window
     select_window.destroy()
     e1.configure(state=tk.NORMAL)
@@ -381,7 +388,7 @@ def select_tbl_window():
         btn_1.grid(column=1, row=0)
         fm_2.grid(column=0, row=1, sticky = tk.NSEW)
         # global insert_check_btn
-        insert_check_btn(text_area, table_list)
+        insert_check_btn(text_area, xer_file.table_list)
         
 ####
 # ОКНО toplevel - конец
@@ -397,7 +404,7 @@ def select_tbl_window():
 win = tk.Tk()
 win.title('Обработка xer-файлов')             # Заголовок главного окна
 win.config(bg="#262e3e")            # цвет фона на главном окне: bg - background вписать цвет словом или RGB-код
-win.geometry('320x300+300+300')     # размеры и положение главного окна
+win.geometry('400x600+300+300')     # размеры и положение главного окна
 win.resizable(True, True)         # Задается возможность изменения размеров по ширине и высоте
 
 win.grid_columnconfigure(0, weight = 1)
@@ -517,7 +524,7 @@ btn2 = tk.Button(
 
 btn3 = tk.Button(
     win,
-    text = 'Очистить от POBS и RISKTYPE',
+    text = 'Очистить Xer-файл',
     command = clean_xer,
     bg = '#87651D',
     fg='white',
