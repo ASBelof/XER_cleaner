@@ -197,7 +197,7 @@ def select_file():
 # вызывается нажатием кнопки 'Выбрать файл' (btn2)
 # выводит в текстовое поле программы путь к выбранному файлу, кол-во таблиц в xer, наименования таблиц с количеством записей в них
 # возвращает экземпляр класса XerFile
-
+tables = {}
 def open_file(filepath):
     # global table_list
     table_list = []
@@ -205,24 +205,42 @@ def open_file(filepath):
         print(filepath)
         with open(filepath, 'r', encoding='cp1251', errors = 'ignore') as f:
             lines = f.readlines()
-            record_counter = 0
-            record_counter_dict = {}
-            table_name = None
-            for line in lines:
+            
+        
+        current_table = None
+        current_columns = None
+        record_counter = 0
+        record_counter_dict = {}
+        table_name = None
+        for line in lines:
+            line = line.strip()
+
+            
+            if line.startswith('%T'):
+                # Начало новой таблицы
+                current_table = line.split()[1]
+                tables[current_table] = []
+                if table_name:
+                    record_counter_dict[table_name] = record_counter
+                
+                record_counter = 0
+                table_name = line.strip().split('\t')[1]
+                table_list.append(table_name)
+            elif line.startswith('%F'):
+                # Заголовки столбцов таблицы
+                current_columns = line.split()[1:]
+            elif line.startswith('%R'):
+                # Строка данных таблицы
+                if current_table and current_columns:
+                    row_data = line.split()[1:]
+                    row_dict = dict(zip(current_columns, row_data))
+                    tables[current_table].append(row_dict)
 
                 
-                if line.startswith('%T'):
-                    if table_name:
-                        record_counter_dict[table_name] = record_counter
-                    
-                    record_counter = 0
-                    table_name = line.strip().split('\t')[1]
-                    table_list.append(table_name)
-                elif line.startswith('%R'):
-                    record_counter += 1
+                record_counter += 1
 
-                elif line.startswith('%E'):
-                    record_counter_dict[table_name] = record_counter
+            elif line.startswith('%E'):
+                record_counter_dict[table_name] = record_counter
                 
         table_list = sorted(table_list)
         for i in table_list:
