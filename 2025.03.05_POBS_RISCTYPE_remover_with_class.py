@@ -9,9 +9,8 @@
     последнее сохранение - 05.03.2025
     
     ИДЕИ:
-        - завести класс Xer_file
-        - импортируемый файл превращать в объект этого класса с полями table_list, 
-        - функции clean_xer и xer_2_excel сделать функциями этого объекта или класса, на вход этим функциям будет подаваться список таблиц (выбранных таблиц)
+        - доработать функции класса, чтобы они работали по структуре data2
+        
 '''
 
 
@@ -28,9 +27,10 @@ from pandas.io.excel import ExcelWriter
 
 class XerFile:
     selected_table_list = []
-    def __init__(self, file_path, data, table_list):
+    def __init__(self, file_path, data, data2, table_list):
         self.file_path = file_path
         self.data = data
+        self.data2 = data2
         self.table_list = table_list
         
     def __repr__(self):
@@ -197,35 +197,25 @@ def select_file():
 # вызывается нажатием кнопки 'Выбрать файл' (btn2)
 # выводит в текстовое поле программы путь к выбранному файлу, кол-во таблиц в xer, наименования таблиц с количеством записей в них
 # возвращает экземпляр класса XerFile
-tables = {}
+
 def open_file(filepath):
-    # global table_list
     table_list = []
     if filepath != "":
         print(filepath)
         with open(filepath, 'r', encoding='cp1251', errors = 'ignore') as f:
             lines = f.readlines()
             
-        
+        tables = {}
         current_table = None
         current_columns = None
-        record_counter = 0
-        record_counter_dict = {}
-        table_name = None
+        
         for line in lines:
             line = line.strip()
 
-            
             if line.startswith('%T'):
                 # Начало новой таблицы
                 current_table = line.split()[1]
                 tables[current_table] = []
-                if table_name:
-                    record_counter_dict[table_name] = record_counter
-                
-                record_counter = 0
-                table_name = line.strip().split('\t')[1]
-                table_list.append(table_name)
             elif line.startswith('%F'):
                 # Заголовки столбцов таблицы
                 current_columns = line.split()[1:]
@@ -235,33 +225,27 @@ def open_file(filepath):
                     row_data = line.split()[1:]
                     row_dict = dict(zip(current_columns, row_data))
                     tables[current_table].append(row_dict)
-
-                
-                record_counter += 1
-
             elif line.startswith('%E'):
-                record_counter_dict[table_name] = record_counter
+                pass
                 
-        table_list = sorted(table_list)
-        for i in table_list:
-            
-            if str(record_counter_dict[i])[-1] == '1' and str(record_counter_dict[i])[-2:] != '11':
-                e1.insert(tk.END, f'\n{i} - {record_counter_dict[i]}строкa')
-            elif str(record_counter_dict[i])[-1] in ['2', '3', '4'] and str(record_counter_dict[i])[-2:] not in ['12', '13', '14']:
-                e1.insert(tk.END, f'\n{i} - {record_counter_dict[i]}строки')
+        table_list = sorted(tables)
+                
+        for i in sorted(tables):
+            if str(len(tables[i]))[-1] == '1' and str(len(tables[i]))[-2:] != '11':
+                e1.insert(tk.END, f'\n{i} - {len(tables[i])}строкa')
+            elif str(len(tables[i]))[-1] in ['2', '3', '4'] and str(len(tables[i]))[-2:] not in ['12', '13', '14']:
+                e1.insert(tk.END, f'\n{i} - {len(tables[i])}строки')
             else: 
-                e1.insert(tk.END, f'\n{i} - {record_counter_dict[i]}строк')
+                e1.insert(tk.END, f'\n{i} - {len(tables[i])}строк')
             
-                    
-        
-        e1.insert('1.0', f'\nКол-во таблиц в выбранном файле - {len(table_list)}шт.:')
+        e1.insert('1.0', f'\nКол-во таблиц в выбранном файле - {len(tables)}шт.:')
         e1.insert('1.0', f'{filepath}')
         e1.configure(state=tk.DISABLED)
     else:
         e1.insert('1.0', 'Файл не выбран...')
         e1.configure(state=tk.DISABLED)
     print (table_list)
-    return XerFile(filepath, lines, table_list) #table_list, filepath
+    return XerFile(filepath, lines, tables, table_list)
 
 
 # функция отвечающая за очистку xer от таблиц POBS и RISCTYPE
