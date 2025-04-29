@@ -26,11 +26,12 @@ from pandas.io.excel import ExcelWriter
 
 class XerFile:
     selected_table_list = []
-    def __init__(self, file_path, data, data2, table_list):
+    def __init__(self, file_path, data, data2, table_list, columns):
         self.file_path = file_path
         self.data = data
         self.data2 = data2
         self.table_list = table_list
+        self.columns = columns
         
     def __repr__(self):
         return f'Файл {self.file_path}\nКоличество таблиц - {len(self.table_list)}'
@@ -59,17 +60,17 @@ class XerFile:
                 # запись основных данных
                 for table_name, rows in self.data2.items():
                     if table_name in self.selected_table_list:
-                        if not rows:
+                        if not rows: # удалить???
                             continue
                             
                         # Записываем заголовок таблицы (с табуляцией)
                         f.write("%T\t" + table_name + "\n")
                         
                         # Получаем все колонки
-                        all_columns = set()
-                        for row in rows:
-                            all_columns.update(row.keys())
-                        columns = sorted(all_columns)
+                        # all_columns = set()
+                        # for row in rows:
+                        #     all_columns.update(row.keys())
+                        columns = self.columns.get(table_name)
                         
                         # Записываем названия столбцов (с табуляцией)
                         f.write("%F\t" + "\t".join(columns) + "\n")
@@ -107,10 +108,6 @@ class XerFile:
                 os.remove(path_to_excel)
             else: None
             
-            # print('\nчтение файла')
-            # with open(xer_file, 'r', encoding=None, errors = 'ignore') as f:
-            #     lines = f.readlines()
-            # print('\nфайл прочитан')
             max_rows = 1048570
             table_name = None
             fields = None
@@ -118,9 +115,7 @@ class XerFile:
             list_of_series = []
 
             def fill_excel_with_data (data, columns, sheet):
-                
-        
-                
+                                
                 df = pd.DataFrame(data)
                 df.columns = columns
                 print(f"Кол-во строк в таблице {sheet} - {len(df)}")
@@ -130,8 +125,7 @@ class XerFile:
                     list_qty = len(df)//max_rows
                     for i in range(1,list_qty+2):
                         df.iloc[max_rows*(i-1):max_rows*i].to_excel(writer, sheet_name=sheet+"_"+str(i), index = False)
-        
-        
+                
             with ExcelWriter(path_to_excel, engine = 'openpyxl', mode="a" if os.path.exists(path_to_excel) else "w") as writer:
                 print('проверка строк...')
                 for line in self.data:
@@ -174,10 +168,6 @@ class XerFile:
             tk.messagebox.showinfo("Результат",(f'Готово!!!\nВ той же папке создан excel-файл {xer_file_name + ".xlsx"}'))
         else:
             tk.messagebox.showinfo("Ошибка!!!",('XER-файл не выбран!!!'))
-    
-    
-    
-    
 #
 # класс - КОНЕЦ
 #***************************
@@ -217,6 +207,7 @@ def open_file(filepath):
             lines = f.readlines()
             
         tables = {}
+        columns_order = {}
         current_table = None
         current_columns = None
         
@@ -227,9 +218,11 @@ def open_file(filepath):
                 # Начало новой таблицы
                 current_table = line.split('\t')[1]
                 tables[current_table] = []
+                columns_order[current_table] = []
             elif line.startswith('%F'):
                 # Заголовки столбцов таблицы
                 current_columns = line.split('\t')[1:]
+                columns_order[current_table] = current_columns
             elif line.startswith('%R'):
                 # Строка данных таблицы
                 if current_table and current_columns:
@@ -256,7 +249,7 @@ def open_file(filepath):
         e1.insert('1.0', 'Файл не выбран...')
         e1.configure(state=tk.DISABLED)
     print (table_list)
-    return XerFile(filepath, lines, tables, table_list)
+    return XerFile(filepath, lines, tables, table_list, columns_order)
 
 
 # функция отвечающая за очистку xer от таблиц POBS и RISCTYPE
