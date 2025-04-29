@@ -5,8 +5,7 @@
     3. Сохранение xer в формате excel.
     4. Выбор таблиц для дальнейшего сохранения их в новый xer или excel
     
-    
-    последнее сохранение - 05.03.2025
+    последнее сохранение - 29.04.2025
     
     ИДЕИ:
         - доработать функции класса, чтобы они работали по структуре data2
@@ -40,38 +39,50 @@ class XerFile:
     def clean_xer(self):
         
         if self.file_path != "":
-            # if 'RISKTYPE' in self.table_list or 'POBS' in self.table_list:
-            xer_file = self.file_path
-            xer_file_name = os.path.splitext(os.path.basename(xer_file))[0]
-            print('xer_file_name -', xer_file_name)
             
-            path_to_xer = os.path.dirname(xer_file)
+            # имя исходного xer-файла
+            xer_file_name = os.path.splitext(os.path.basename(self.file_path))[0]
+            print('имя исходного xer-файла - ', xer_file_name)
+            
+            # путь к исходному xer-файлу
+            path_to_xer = os.path.dirname(self.file_path)
             print (path_to_xer)
-        
+            
+            # полный путь к новому xer-файлу
             path_to_new_xer = os.path.join(path_to_xer, xer_file_name + '_NEW.xer')
             print(path_to_new_xer)
-        
+            
             with open(path_to_new_xer, 'w', encoding='cp1251', errors = 'ignore') as f:
-                for line in self.data:
-                    if line.startswith('%T'):
-                        table_name = line.strip().split('\t')[1]
-                        if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
-                            f.write(line)
-                        # table_name == 'RISKTYPE' or table_name == 'POBS':
-                        #     del_line = 'del'
-                        else:
-                            continue
-                            # f.write(line)
-                            # del_line = None
-                    elif line.startswith('%F') or line.startswith('%R'):
-                        if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
-                            f.write(line)
-                    else:
-                        f.write(line)
+                # запись первой строки
+                f.write(self.data[0])
                 
+                # запись основных данных
+                for table_name, rows in self.data2.items():
+                    if table_name in self.selected_table_list:
+                        if not rows:
+                            continue
+                            
+                        # Записываем заголовок таблицы (с табуляцией)
+                        f.write("%T\t" + table_name + "\n")
+                        
+                        # Получаем все колонки
+                        all_columns = set()
+                        for row in rows:
+                            all_columns.update(row.keys())
+                        columns = sorted(all_columns)
+                        
+                        # Записываем названия столбцов (с табуляцией)
+                        f.write("%F\t" + "\t".join(columns) + "\n")
+                        
+                        # Записываем строки данных (с табуляцией)
+                        for row in rows:
+                            values = [str(row.get(col, '')) for col in columns]
+                            f.write("%R\t" + "\t".join(values) + "\n")
+                        
+                # запись последней строки
+                f.write('%E')
+                                
                 tk.messagebox.showinfo("Результат",('Готово!!!\nВ той же папке создан xer-файл с индексом "NEW"'))
-            # else:
-            #     tk.messagebox.showinfo("Внимание!!!",('В выбранном XER-файле нет таблиц "POBS" или "RISKTYPE".\rНовый файл не создан!'))
         else:
             tk.messagebox.showinfo("Ошибка!!!",('XER-файл не выбран!!!'))
             
@@ -214,15 +225,15 @@ def open_file(filepath):
 
             if line.startswith('%T'):
                 # Начало новой таблицы
-                current_table = line.split()[1]
+                current_table = line.split('\t')[1]
                 tables[current_table] = []
             elif line.startswith('%F'):
                 # Заголовки столбцов таблицы
-                current_columns = line.split()[1:]
+                current_columns = line.split('\t')[1:]
             elif line.startswith('%R'):
                 # Строка данных таблицы
                 if current_table and current_columns:
-                    row_data = line.split()[1:]
+                    row_data = line.split('\t')[1:]
                     row_dict = dict(zip(current_columns, row_data))
                     tables[current_table].append(row_dict)
             elif line.startswith('%E'):
@@ -412,106 +423,6 @@ win.resizable(True, True)         # Задается возможность из
 win.grid_columnconfigure(0, weight = 1)
 win.grid_rowconfigure(0, weight = 1)
 
-# Виджеты
-
-
-
-
-# # создание виджета Label
-# label_1 = tk.Label(
-#     win,                            # имя окна, для которого создан виджет
-#     text='Обработка xer-файлов',    # отображаемое имя
-#     bg='#34495e',                   # цвет фона шрифта
-#     fg='white',                     # цвет шрифта
-#     # font=('Arial', 10),
-#     # padx=60,#отступы
-#     # pady=5,
-#     width = 40,
-#     height = 2,
-#      relief = tk.RAISED, bd = 0.5
-#     )
-
-
-
-'''
-def list_of_tables_chkbox():
-    table_dict = dict.fromkeys(table_list, 0)
-    window = tk.Toplevel()
-    window.title("Список таблиц")
-    window.geometry("250x500")
-    # enabled = tk.IntVar()
-    
-    # scrollbar = ttk.Scrollbar(orient="vertical", command=window.yview)
-    # scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    # window["yscrollcommand"]=scrollbar.set
-    
-    frame=tk.Frame(window,fill='both')
-    frame.pack(expand=True, fill='both')
-    
-    canvas = tk.Canvas(frame)
-    
-    vbar=tk.Scrollbar(frame,orient=tk.VERTICAL)
-    vbar.pack(side=tk.RIGHT,fill=tk.Y)
-    vbar.config(command=canvas.yview)
-    
-    # scroll_y = tk.Scrollbar(window, orient="vertical", command=canvas.yview)
-    # scroll_y.pack(fill='y', side='right')
-    # canvas["yscrollcommand"]=scroll_y.set
-    
-    # canvas.config(width=300,height=300)
-    canvas.config(yscrollcommand=vbar.set)
-    canvas.pack(side=tk.LEFT,expand=True,fill=tk.BOTH)
-    
-    
-    
-    # canvas.pack(side='left', fill='both', expand=1)
-
-
-    
-    label_2 = tk.Label(
-        canvas,                                     # имя окна, где размещается виджет
-        text='Выбери таблицы для экспорта',         # отображаемое имя
-        bg='#34495e',                               # цвет фона шрифта
-        fg='white',                                 # цвет шрифта
-        width = 40,
-        height = 2,
-        relief = tk.RAISED, 
-        bd = 0.5
-        )
-    label_2.pack()
-    
-
-    
-    def selected_tables():
-        global table_list
-        table_list = []
-        for table in table_dict: 
-            print(table_dict[table].get())
-            if table_dict[table].get() == 1:
-                table_list.append(table)
-        window.destroy()
-        return table_list
-        # for a in table_list:
-        #     if table_list[a].get() == 1:
-
-
-    for table in table_dict:
-        table_dict[table] = tk.IntVar(value=1)
-        tk.Checkbutton(canvas, text=table, variable=table_dict[table]).pack(anchor="nw")
-        # enabled_label = tk.Label(window, textvariable=table_dict[table]).pack()
-        print(table_dict[table], table, table_dict[table].get())
-    
-    btn_window = tk.Button(
-        canvas,
-        bg='#cf6679',
-        text = 'Выбрать таблицы',
-        command = selected_tables,
-        fg='white',
-        width = 40,
-        relief = tk.RAISED, bd = 0.5
-        )
-    btn_window.pack()
-'''
 
 
    
@@ -560,7 +471,6 @@ scrollbar = ttk.Scrollbar(orient="vertical", command=e1.yview)
 scrollbar.grid(column = 1, row = 0, sticky = tk.NS)
 e1["yscrollcommand"]=scrollbar.set
 
-
 btn5 = tk.Button(
     win,
     text = 'Выбрать таблицы',
@@ -571,39 +481,11 @@ btn5 = tk.Button(
     relief = tk.RAISED, bd = 0.5
     )
 
-# label_1.pack()
-# e1.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-# btn2.pack(fill='x', padx=5)
-# btn3.pack(fill='x', padx=5)
-# btn4.pack(fill='x', padx=5)
-# btn5.pack()
-
 e1.grid(column = 0, row = 0, sticky = tk.NSEW)
 btn2.grid(columnspan=2, sticky=tk.EW)
 btn3.grid(columnspan=2, sticky=tk.EW)
 
 btn4.grid(columnspan=2, sticky=tk.EW)
 btn5.grid(columnspan=2, sticky=tk.EW)
-
-
-
-# tree = ttk.Treeview()
-# # установка заголовка
-# tree.heading("#0", text="ИСР", anchor=tk.NW)
-# tree.grid(columnspan=2, sticky=tk.EW)
- 
-# tree.insert("", tk.END, iid=1, text="Административный отдел", open=True)
-# tree.insert("", tk.END, iid=2, text="IT-отдел")
-# tree.insert("", tk.END, iid=3, text="Отдел продаж")
- 
-# tree.insert(1, index=tk.END, iid=4, text="Tom")
-# tree.insert(4, index=tk.END, text="Bob")
-# tree.insert(2, index=tk.END, text="Sam")
-
-
-
-
-
-
 
 win.mainloop()
