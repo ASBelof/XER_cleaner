@@ -26,6 +26,7 @@ from pandas.io.excel import ExcelWriter
 
 class XerFile:
     selected_table_list = []
+    file_path = ''
     def __init__(self, file_path, data, data2, table_list, columns):
         self.file_path = file_path
         self.data = data
@@ -128,43 +129,79 @@ class XerFile:
                 
             with ExcelWriter(path_to_excel, engine = 'openpyxl', mode="a" if os.path.exists(path_to_excel) else "w") as writer:
                 print('проверка строк...')
-                for line in self.data:
-                    if line.startswith('%T'):            
-                        if list_of_series != []:
-                            fill_excel_with_data(list_of_series, fields, table_name)
-                        table_name = line.strip().split('\t')[1]
-                        print ('\nТаблица - ', table_name)
-                        if table_name not in self.selected_table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
-                            fields = None
-                            rows = []
-                            df = pd.DataFrame (None)
-                            s = pd.Series(None)
-                            list_of_series = []
-                            print ('в выгрузку не попадает')
+                
+                for table_name, rows in self.data2.items():
+                    if table_name in self.selected_table_list:
+                        
+                        # Получаем порядок столбцов для текущей таблицы
+                        columns = self.columns.get(table_name, list(rows[0].keys()))
+                        
+                        # Создаем DataFrame с нужным порядком столбцов
+                        df = pd.DataFrame(rows, columns=columns)
+                        
+                        # Очистка от недопустимых символов
+                        for col in df.columns:
+                            if df[col].dtype == object:
+                                df[col] = df[col].apply(lambda x: x.replace('\x00', '') if isinstance(x, str) else x)
+                        
+                        # Разбиваем на части если превышено max_rows
+                        total_rows = len(df)
+                        if total_rows <= max_rows:
+                            df.to_excel(writer, sheet_name=table_name[:31], index=False)
                         else:
-                            fields = None
-                            rows = []
-                            df = pd.DataFrame (None)
-                            s = pd.Series(None)
-                            list_of_series = []
-                            print ('в выгрузку попадает')
-                    elif line.startswith('%F'):
-                        if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
-                            fields = line.strip().split('\t')
-                    elif line.startswith('%R'):
-                        if table_name not in self.selected_table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
-                            continue
-                        if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
-                            rows = line.strip().split('\t')[:len(fields)+1]
-                            if len(rows)<len(fields):
-                                len_dif = len(fields)-len(rows)
-                                for i in range(0,len_dif):
-                                    rows.append('')
-                            s = pd.Series(rows)
-                            list_of_series.append(s)
-                    elif line.startswith('%E'):
-                        if list_of_series != []:
-                            fill_excel_with_data(list_of_series, fields, table_name)
+                            parts = (total_rows // max_rows) + 1
+                            for i in range(parts):
+                                start_idx = i * max_rows
+                                end_idx = (i + 1) * max_rows
+                                sheet_name = f"{table_name[:28]}_{i+1}"
+                                df.iloc[start_idx:end_idx].to_excel(
+                                    writer, 
+                                    sheet_name=sheet_name, 
+                                    index=False
+                                )
+
+
+
+                
+                
+                
+                # for line in self.data:
+                #     if line.startswith('%T'):            
+                #         if list_of_series != []:
+                #             fill_excel_with_data(list_of_series, fields, table_name)
+                #         table_name = line.strip().split('\t')[1]
+                #         print ('\nТаблица - ', table_name)
+                #         if table_name not in self.selected_table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
+                #             fields = None
+                #             rows = []
+                #             df = pd.DataFrame (None)
+                #             s = pd.Series(None)
+                #             list_of_series = []
+                #             print ('в выгрузку не попадает')
+                #         else:
+                #             fields = None
+                #             rows = []
+                #             df = pd.DataFrame (None)
+                #             s = pd.Series(None)
+                #             list_of_series = []
+                #             print ('в выгрузку попадает')
+                #     elif line.startswith('%F'):
+                #         if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
+                #             fields = line.strip().split('\t')
+                #     elif line.startswith('%R'):
+                #         if table_name not in self.selected_table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
+                #             continue
+                #         if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
+                #             rows = line.strip().split('\t')[:len(fields)+1]
+                #             if len(rows)<len(fields):
+                #                 len_dif = len(fields)-len(rows)
+                #                 for i in range(0,len_dif):
+                #                     rows.append('')
+                #             s = pd.Series(rows)
+                #             list_of_series.append(s)
+                #     elif line.startswith('%E'):
+                #         if list_of_series != []:
+                #             fill_excel_with_data(list_of_series, fields, table_name)
             tk.messagebox.showinfo("Результат",(f'Готово!!!\nВ той же папке создан excel-файл {xer_file_name + ".xlsx"}'))
         else:
             tk.messagebox.showinfo("Ошибка!!!",('XER-файл не выбран!!!'))
