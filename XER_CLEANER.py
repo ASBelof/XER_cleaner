@@ -115,17 +115,17 @@ class XerFile:
             rows = []
             list_of_series = []
 
-            def fill_excel_with_data (data, columns, sheet):
+            # def fill_excel_with_data (data, columns, sheet):
                                 
-                df = pd.DataFrame(data)
-                df.columns = columns
-                print(f"Кол-во строк в таблице {sheet} - {len(df)}")
-                if len(df) < max_rows:
-                    df.to_excel(writer, sheet_name=sheet, index = False)
-                else:
-                    list_qty = len(df)//max_rows
-                    for i in range(1,list_qty+2):
-                        df.iloc[max_rows*(i-1):max_rows*i].to_excel(writer, sheet_name=sheet+"_"+str(i), index = False)
+            #     df = pd.DataFrame(data)
+            #     df.columns = columns
+            #     print(f"Кол-во строк в таблице {sheet} - {len(df)}")
+            #     if len(df) < max_rows:
+            #         df.to_excel(writer, sheet_name=sheet, index = False)
+            #     else:
+            #         list_qty = len(df)//max_rows
+            #         for i in range(1,list_qty+2):
+            #             df.iloc[max_rows*(i-1):max_rows*i].to_excel(writer, sheet_name=sheet+"_"+str(i), index = False)
                 
             with ExcelWriter(path_to_excel, engine = 'openpyxl', mode="a" if os.path.exists(path_to_excel) else "w") as writer:
                 print('проверка строк...')
@@ -134,12 +134,12 @@ class XerFile:
                     if table_name in self.selected_table_list:
                         
                         # Получаем порядок столбцов для текущей таблицы
-                        columns = self.columns.get(table_name, list(rows[0].keys()))
+                        columns = self.columns.get(table_name)
                         
                         # Создаем DataFrame с нужным порядком столбцов
                         df = pd.DataFrame(rows, columns=columns)
                         
-                        # Очистка от недопустимых символов
+                        # Очистка от недопустимых символов?????????????????????????????????????????????????
                         for col in df.columns:
                             if df[col].dtype == object:
                                 df[col] = df[col].apply(lambda x: x.replace('\x00', '') if isinstance(x, str) else x)
@@ -149,6 +149,7 @@ class XerFile:
                         if total_rows <= max_rows:
                             df.to_excel(writer, sheet_name=table_name[:31], index=False)
                         else:
+                            #
                             parts = (total_rows // max_rows) + 1
                             for i in range(parts):
                                 start_idx = i * max_rows
@@ -160,55 +161,16 @@ class XerFile:
                                     index=False
                                 )
 
-
-
-                
-                
-                
-                # for line in self.data:
-                #     if line.startswith('%T'):            
-                #         if list_of_series != []:
-                #             fill_excel_with_data(list_of_series, fields, table_name)
-                #         table_name = line.strip().split('\t')[1]
-                #         print ('\nТаблица - ', table_name)
-                #         if table_name not in self.selected_table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
-                #             fields = None
-                #             rows = []
-                #             df = pd.DataFrame (None)
-                #             s = pd.Series(None)
-                #             list_of_series = []
-                #             print ('в выгрузку не попадает')
-                #         else:
-                #             fields = None
-                #             rows = []
-                #             df = pd.DataFrame (None)
-                #             s = pd.Series(None)
-                #             list_of_series = []
-                #             print ('в выгрузку попадает')
-                #     elif line.startswith('%F'):
-                #         if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
-                #             fields = line.strip().split('\t')
-                #     elif line.startswith('%R'):
-                #         if table_name not in self.selected_table_list or table_name == 'RISKTYPE' or table_name == 'POBS':
-                #             continue
-                #         if table_name in self.selected_table_list and (table_name != 'RISKTYPE' or table_name != 'POBS'):
-                #             rows = line.strip().split('\t')[:len(fields)+1]
-                #             if len(rows)<len(fields):
-                #                 len_dif = len(fields)-len(rows)
-                #                 for i in range(0,len_dif):
-                #                     rows.append('')
-                #             s = pd.Series(rows)
-                #             list_of_series.append(s)
-                #     elif line.startswith('%E'):
-                #         if list_of_series != []:
-                #             fill_excel_with_data(list_of_series, fields, table_name)
             tk.messagebox.showinfo("Результат",(f'Готово!!!\nВ той же папке создан excel-файл {xer_file_name + ".xlsx"}'))
         else:
             tk.messagebox.showinfo("Ошибка!!!",('XER-файл не выбран!!!'))
 #
 # класс - КОНЕЦ
 #***************************
-    
+
+
+
+
 
 #**********************************************************************
 # функции программы
@@ -292,14 +254,12 @@ def open_file(filepath):
 # функция отвечающая за очистку xer от таблиц POBS и RISCTYPE
 # вызывается нажатием кнопки 'Очистить *.xer' (btn3)
 # сохраняет очищенный xer под новым именем
-
 def clean_xer():
-    
+
     xer_file.clean_xer()
-    
+
 # функция отвечающая за сохранение xer в формате excel
 # сохраняет excel-файл в той же папке
-
 def xer_2_excel():
     
     xer_file.xer_2_excel()
@@ -318,12 +278,10 @@ def insert_check_btn(text_area, list_of_tables):
     
     check_btn_vars = []
     check_btn_list = []
-    # global list_of_tables
     print(f'tbl list is {list_of_tables}')
     list_of_tables = sorted(list_of_tables)
     for index, table in enumerate(list_of_tables):
                 
-        # global text_area
         var = tk.IntVar()
         var.set(1)
         check_btn_vars.append(var)
@@ -331,10 +289,9 @@ def insert_check_btn(text_area, list_of_tables):
                                    variable=var,
                                    command = None)
         check_btn_list.append(check_btn)
-        if table in ['RISKTYPE', 'POBS']:#, 'PROJECT', 'PROJWBS', 'RSRC']:
+        if table in ['RISKTYPE', 'POBS']:
             check_btn.configure(state=tk.DISABLED, variable = var.set(0))
             check_btn_list.remove(check_btn)
-        # check_btn.pack(anchor="nw")
         text_area.window_create('end', window=check_btn)
         text_area.insert('end', '\n')
         
@@ -352,8 +309,7 @@ def selection_get():
         if s.get() == 1:
             selected_indexes.append(check_btn_vars.index(s))
             selected_tables.append(xer_file.table_list[check_btn_vars.index(s)])
-            # print(list_of_tables_in_xer[check_btn_vars.index(s)])
-        
+
     print(f'\n{selected_indexes}')
     print(selected_tables)
     xer_file.selected_table_list = selected_tables
@@ -362,46 +318,45 @@ def selection_get():
     e1.configure(state=tk.NORMAL)
     e1.insert(tk.END, f'\n\nВыбраны таблицы {selected_tables}')
     e1.configure(state=tk.DISABLED)
-    
+
 
 def select_all():
     for i in check_btn_list:
         i.select()
-        
-        
+
+
 def deselect_all():
     for i in check_btn_list:
         i.deselect()
-        
-        
+
+
 #######################################################################################
 # ОКНО toplevel - начало
 #######
 def select_tbl_window():
     # global filepath
-    
+
     if xer_file.file_path == '':
         tk.messagebox.showinfo("Ошибка!!!",('XER-файл не выбран!!!'))
     else:
-        
+
         global select_window
         select_window = tk.Toplevel(win)
         select_window.title('Выбор таблиц')
-    
+
         select_window.resizable(False, True)
-    
+
         fm_1 = ttk.Frame(select_window, borderwidth=1, relief="raised")
         fm_2 = ttk.Frame(select_window, borderwidth=1, relief="raised")
-        # global text_area
         text_area = tk.Text(fm_1, bg='SystemButtonFace', width=30)
         text_area.grid(column = 0, row = 0, sticky = tk.NSEW)
-    
+
         scroll_bar = tk.Scrollbar(fm_1, command=text_area.yview)
         scroll_bar.grid(column = 1, row = 0, sticky = tk.NSEW, pady=0)
-    
+
         text_area.configure(yscrollcommand=scroll_bar.set)
-    
-    
+
+
         select_window.columnconfigure(0, weight=1)
         select_window.columnconfigure(1, weight=1)
         select_window.rowconfigure(0, weight=1)
@@ -409,10 +364,10 @@ def select_tbl_window():
         fm_1.rowconfigure(0, weight=1)
         fm_2.columnconfigure(0, weight=1)
         fm_2.columnconfigure(1, weight=1)
-    
-    
+
+
         btn_1 = tk.Button(fm_2, text='Выбрать', command=selection_get, relief=tk.RAISED, bd = 0.5)
-    
+
         def select_fun():
             if check_all_var.get() == 1:
                 for i in check_btn_list: 
@@ -420,19 +375,19 @@ def select_tbl_window():
             elif check_all_var.get() == 0:
                 for i in check_btn_list:
                     i.deselect()
-    
+
         check_all_var = tk.IntVar()
         check_all_var.set(1)
         check_all = tk.Checkbutton(fm_2, text='Выбрать все', variable=check_all_var, command=select_fun)
-    
-    
+
+
         fm_1.grid(column=0, row=0, sticky = tk.NSEW)
         check_all.grid(column=0, row=0)
         btn_1.grid(column=1, row=0)
         fm_2.grid(column=0, row=1, sticky = tk.NSEW)
         # global insert_check_btn
         insert_check_btn(text_area, xer_file.table_list)
-        
+
 ####
 # ОКНО toplevel - конец
 #############################################################################################
@@ -454,8 +409,6 @@ win.grid_columnconfigure(0, weight = 1)
 win.grid_rowconfigure(0, weight = 1)
 
 
-
-   
 btn2 = tk.Button(
     win,
     bg='#84a724',
